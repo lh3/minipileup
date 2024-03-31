@@ -1,7 +1,6 @@
 // This piece of code is modified from samtools/bam2depth.c
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <assert.h>
 #include <limits.h>
 #include <ctype.h>
@@ -10,6 +9,7 @@
 #include "sam.h"
 #include "faidx.h"
 #include "ksort.h"
+#include "ketopt.h"
 
 #define VERSION "0.1.0"
 
@@ -240,28 +240,29 @@ int main(int argc, char *argv[])
 	paux_t aux;
 	bam_mplp_t mplp;
 	void *bed = 0;
+	ketopt_t o = KETOPT_INIT;
 
 	// parse the command line
-	while ((n = getopt(argc, argv, "r:q:Q:l:f:dvcCS:Fs:D:V:uRMb:T:x:e")) >= 0) {
-		if (n == 'f') { fname = optarg; fai = fai_load(fname); }
-		else if (n == 'b') bed = bed_read(optarg);
-		else if (n == 'l') min_len = atoi(optarg); // minimum query length
-		else if (n == 'r') reg = strdup(optarg);   // parsing a region requires a BAM header
-		else if (n == 'Q') baseQ = atoi(optarg);   // base quality threshold
-		else if (n == 'q') mapQ = atoi(optarg);    // mapping quality threshold
-		else if (n == 's') min_support = atoi(optarg);
+	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:dvcCS:Fs:D:V:uRMb:T:x:e", 0)) >= 0) {
+		if (n == 'f') { fname = o.arg; fai = fai_load(fname); }
+		else if (n == 'b') bed = bed_read(o.arg);
+		else if (n == 'l') min_len = atoi(o.arg); // minimum query length
+		else if (n == 'r') reg = strdup(o.arg);   // parsing a region requires a BAM header
+		else if (n == 'Q') baseQ = atoi(o.arg);   // base quality threshold
+		else if (n == 'q') mapQ = atoi(o.arg);    // mapping quality threshold
+		else if (n == 's') min_support = atoi(o.arg);
 		else if (n == 'd') qual_as_depth = 1;
-		else if (n == 'S') min_supp_len = atoi(optarg);
+		else if (n == 'S') min_supp_len = atoi(o.arg);
 		else if (n == 'v') var_only = 1;
-		else if (n == 'V') div_coef = atof(optarg);
+		else if (n == 'V') div_coef = atof(o.arg);
 		else if (n == 'c') is_vcf = var_only = 1;
 		else if (n == 'C') show_2strand = 1;
-		else if (n == 'D') max_dev = atof(optarg), is_fa = 1;
+		else if (n == 'D') max_dev = atof(o.arg), is_fa = 1;
 		else if (n == 'F') is_fa = 1;
 		else if (n == 'M') majority_fa = is_fa = 1;
 		else if (n == 'R') rand_fa = is_fa = 1;
-		else if (n == 'T') trim_len = atoi(optarg);
-		else if (n == 'x') char_x = toupper(*optarg);
+		else if (n == 'T') trim_len = atoi(o.arg);
+		else if (n == 'x') char_x = toupper(*o.arg);
 		else if (n == 'e') del_as_allele = 1;
 		else if (n == 'u') {
 			baseQ = 3; mapQ = 20; qual_as_depth = 1;
