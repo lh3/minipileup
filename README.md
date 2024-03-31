@@ -2,6 +2,7 @@ Minipileup is a simple pileup-based variant caller. It takes a reference FASTA
 and one or multiple alignment BAM as input, and outputs a multi-sample VCF along with
 allele counts:
 ```sh
+samtools faidx ref.fa       # index FASTA; bgzip'd FASTA is not supported
 minipileup -yf ref.fa aln1.bam aln2.bam > var.vcf
 ```
 You can adjust mapping quality, base quality, alignment length and allele count
