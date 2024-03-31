@@ -13,9 +13,8 @@ might find it useful for counting alleles in applications GATK is not designed
 for. In principle, you can parse the samtools mpileup output to generate a VCF
 but minipileup is faster and more convenient.
 
-I often see questions about how to get allele counts from alignments. The
-[htsbox][htsbox] pileup command has implemented this functionality since 2012
-but few are using it. Minipileup is derived from htsbox. I hope as a separate
-repo, minipileup may become more useful.
+Minipileup is adapted from the [htsbox][htsbox] pileup command which was
+initially implemented in 2012 and has been a tool I frequently use to
+investigate alignment data.
 
 [htsbox]: https://github.com/lh3/htsbox
