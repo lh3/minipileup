@@ -1,6 +1,6 @@
 Minipileup is a simple pileup-based variant caller. It takes a reference FASTA
-and one or multiple alignment BAM, and outputs a multi-sample VCF with
-candidate variants along with allele counts:
+and one or multiple alignment BAM, and outputs a multi-sample VCF along with
+allele counts:
 ```sh
 minipileup -yf ref.fa aln1.bam aln2.bam > var.vcf
 ```
