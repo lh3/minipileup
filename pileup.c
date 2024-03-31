@@ -11,7 +11,7 @@
 #include "ksort.h"
 #include "ketopt.h"
 
-#define VERSION "0.1.0"
+#define VERSION "1.0-r11"
 
 const char *hts_parse_reg(const char *s, int *beg, int *end);
 void *bed_read(const char *fn);
