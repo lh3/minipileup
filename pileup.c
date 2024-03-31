@@ -237,22 +237,22 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Usage: minipileup [options] in1.bam [in2.bam [...]]\n");
 		fprintf(stderr, "Options:\n");
 		fprintf(stderr, "  Common:\n");
-		fprintf(stderr, "    -f FILE    reference genome [null]\n");
-		fprintf(stderr, "    -v         show variants only\n");
-		fprintf(stderr, "    -c         output in the VCF format (force -v)\n");
-		fprintf(stderr, "    -C         show count of each allele on both strands\n");
-		fprintf(stderr, "    -e         use '*' to mark deleted bases\n");
+		fprintf(stderr, "    -f FILE      reference genome [null]\n");
+		fprintf(stderr, "    -v           show variants only\n");
+		fprintf(stderr, "    -c           output in the VCF format (force -v)\n");
+		fprintf(stderr, "    -C           show count of each allele on both strands\n");
+		fprintf(stderr, "    -e           use '*' to mark deleted bases\n");
 		fprintf(stderr, "  Filtering:\n");
-		fprintf(stderr, "    -r STR     region in format of 'ctg:start-end' [null]\n");
-		fprintf(stderr, "    -b FILE    BED or position list file to include [null]\n");
-		fprintf(stderr, "    -q INT     minimum mapping quality [%d]\n", mapQ);
-		fprintf(stderr, "    -Q INT     minimum base quality [%d]\n", baseQ);
-		fprintf(stderr, "    -l INT     minimum query length [%d]\n", min_len);
-		fprintf(stderr, "    -S INT     minimum supplementary alignment length [0]\n");
-		fprintf(stderr, "    -V FLOAT   skip alignment with per-base divergence >FLOAT [1]\n");
-		fprintf(stderr, "    -T INT     skip bases within INT-bp from either end of a read [0]\n");
-		fprintf(stderr, "    -s INT     drop alleles with depth<INT [%d]\n", min_support);
-		fprintf(stderr, "    -a INT     drop alleles with depth<INT on either strand [%d]\n", min_support_strand);
+		fprintf(stderr, "    -r STR       region in format of 'ctg:start-end' [null]\n");
+		fprintf(stderr, "    -b FILE      BED or position list file to include [null]\n");
+		fprintf(stderr, "    -q INT       minimum mapping quality [%d]\n", mapQ);
+		fprintf(stderr, "    -Q INT       minimum base quality [%d]\n", baseQ);
+		fprintf(stderr, "    -l INT       minimum query length [%d]\n", min_len);
+		fprintf(stderr, "    -S INT       minimum supplementary alignment length [0]\n");
+		fprintf(stderr, "    -V FLOAT     skip alignment with per-base divergence >FLOAT [1]\n");
+		fprintf(stderr, "    -T INT       skip bases within INT-bp from either end of a read [0]\n");
+		fprintf(stderr, "    -s INT       drop alleles with depth<INT [%d]\n", min_support);
+		fprintf(stderr, "    -a INT       drop alleles with depth<INT on either strand [%d]\n", min_support_strand);
 		return 1;
 	}
 
