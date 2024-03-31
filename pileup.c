@@ -24,7 +24,7 @@ typedef struct {     // auxiliary data structure
 	const bam_hdr_t *h;
 	int min_mapQ, min_len; // mapQ filter; length filter
 	int min_supp_len;
-	float div_coef;
+	double div_coef;
 	void *bed;       // bedidx if not NULL
 } aux_t;
 
@@ -154,17 +154,16 @@ typedef struct {
 	int tot_dp, max_dp, n_cnt, max_cnt;
 	allele_t *a; // allele of each read, of size $n_a
 	int *cnt_strand, *cnt_supp; // cnt_strand: count of supporting reads on both strands; cnt_supp: sum of both strands
-	int *support; // support across entire $a. It points to the last "row" of cnt_q.
-
+	int *support, *support_strand; // support across entire $a. It points to the last "row" of cnt_supp/cnt_strand
 	int len, max_len;
 	char *seq;
 	int *depth;
 } paux_t;
 
-static void count_alleles(paux_t *pa, int n, int qual_as_depth)
+static void count_alleles(paux_t *pa, int n)
 {
 	allele_t *a = pa->a;
-	int i, j;
+	int i;
 	a[0].k = 0; // the first allele is given allele id 0
 	pa->max_del = a[0].indel < 0? -a[0].indel : 0;
 	for (i = pa->n_alleles = 1; i < pa->n_a; ++i) {
@@ -182,23 +181,24 @@ static void count_alleles(paux_t *pa, int n, int qual_as_depth)
 		pa->cnt_supp = (int*)realloc(pa->cnt_supp, pa->max_cnt * sizeof(int));
 	}
 	memset(pa->cnt_strand, 0, pa->n_cnt * 2 * sizeof(int));
+	pa->support_strand = pa->cnt_strand + pa->n_alleles * n * 2;
 	memset(pa->cnt_supp, 0, pa->n_cnt * sizeof(int));
-	pa->support = pa->cnt_supp + pa->n_alleles * n; // points to the last row of cnt_q
+	pa->support = pa->cnt_supp + pa->n_alleles * n; // points to the last row of cnt_supp
 	for (i = 0; i < pa->n_a; ++i) { // compute counts and sums of qualities
-		int d = qual_as_depth? a[i].q : 1;
-		j = (a[i].pos>>32)*pa->n_alleles + a[i].k;
-		pa->cnt_strand[j<<1|a[i].is_rev] += d;
-		pa->cnt_supp[j] += d;
-		pa->support[a[i].k] += d;
+		int j = (a[i].pos>>32)*pa->n_alleles + a[i].k;
+		pa->cnt_strand[j<<1|a[i].is_rev]++;
+		pa->cnt_supp[j]++;
+		pa->support[a[i].k]++;
+		pa->support_strand[a[i].k<<1|a[i].is_rev]++;
 	}
 }
 
 int main(int argc, char *argv[])
 {
-	int i, j, n, tid, beg, end, pos, *n_plp, baseQ = 0, mapQ = 0, min_len = 0, l_ref = 0, min_support = 1, min_supp_len = 0;
+	int i, j, n, tid, beg, end, pos, *n_plp, baseQ = 0, mapQ = 0, min_len = 0, l_ref = 0, min_support = 1, min_support_strand = 0, min_supp_len = 0;
 	int is_vcf = 0, var_only = 0, show_2strand = 0, trim_len = 0, del_as_allele = 0;
 	int last_tid;
-	float div_coef = 1.;
+	double div_coef = 1.;
 	const bam_pileup1_t **plp;
 	char *ref = 0, *reg = 0, *chr_end; // specified region
 	char *fname = 0; // reference fasta
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 	ketopt_t o = KETOPT_INIT;
 
 	// parse the command line
-	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:vcCS:s:V:b:T:e", 0)) >= 0) {
+	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:vcCS:s:V:b:T:ea:", 0)) >= 0) {
 		if (n == 'f') { fname = o.arg; fai = fai_load(fname); }
 		else if (n == 'b') bed = bed_read(o.arg);
 		else if (n == 'l') min_len = atoi(o.arg); // minimum query length
@@ -219,6 +219,7 @@ int main(int argc, char *argv[])
 		else if (n == 'Q') baseQ = atoi(o.arg);   // base quality threshold
 		else if (n == 'q') mapQ = atoi(o.arg);    // mapping quality threshold
 		else if (n == 's') min_support = atoi(o.arg);
+		else if (n == 'a') min_support_strand = atoi(o.arg);
 		else if (n == 'S') min_supp_len = atoi(o.arg);
 		else if (n == 'v') var_only = 1;
 		else if (n == 'V') div_coef = atof(o.arg);
@@ -240,17 +241,18 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "    -v         show variants only\n");
 		fprintf(stderr, "    -c         output in the VCF format (force -v)\n");
 		fprintf(stderr, "    -C         show count of each allele on both strands\n");
+		fprintf(stderr, "    -e         use '*' to mark deleted bases\n");
 		fprintf(stderr, "  Filtering:\n");
-		fprintf(stderr, "    -r STR     region [null]\n");
+		fprintf(stderr, "    -r STR     region in format of 'ctg:start-end' [null]\n");
 		fprintf(stderr, "    -b FILE    BED or position list file to include [null]\n");
-		fprintf(stderr, "    -Q INT     minimum base quality [%d]\n", baseQ);
 		fprintf(stderr, "    -q INT     minimum mapping quality [%d]\n", mapQ);
+		fprintf(stderr, "    -Q INT     minimum base quality [%d]\n", baseQ);
 		fprintf(stderr, "    -l INT     minimum query length [%d]\n", min_len);
 		fprintf(stderr, "    -S INT     minimum supplementary alignment length [0]\n");
-		fprintf(stderr, "    -V FLOAT   ignore queries with per-base divergence >FLOAT [1]\n");
-		fprintf(stderr, "    -T INT     ignore bases within INT-bp from either end of a read [0]\n");
+		fprintf(stderr, "    -V FLOAT   skip alignment with per-base divergence >FLOAT [1]\n");
+		fprintf(stderr, "    -T INT     skip bases within INT-bp from either end of a read [0]\n");
 		fprintf(stderr, "    -s INT     drop alleles with depth<INT [%d]\n", min_support);
-		fprintf(stderr, "    -e         use '*' to mark deleted bases\n");
+		fprintf(stderr, "    -a INT     drop alleles with depth<INT on either strand [%d]\n", min_support_strand);
 		return 1;
 	}
 
@@ -347,15 +349,15 @@ int main(int argc, char *argv[])
 			if (aux.n_a == 0) continue; // no reads are good enough; zero effective coverage
 			// count alleles
 			ks_introsort(allele, aux.n_a, aux.a);
-			count_alleles(&aux, n, 0);
+			count_alleles(&aux, n);
 			// squeeze out weak alleles
 			for (i = k = 0; i < aux.n_a; ++i)
-				if (aux.support[a[i].k] >= min_support)
+				if (aux.support[a[i].k] >= min_support && aux.support_strand[a[i].k<<1] >= min_support_strand && aux.support_strand[a[i].k<<1|1] >= min_support_strand)
 					a[k++] = a[i];
 			if (k < aux.n_a) {
 				if (k == 0) continue; // no alleles are good enough
 				aux.n_a = k;
-				count_alleles(&aux, n, 0);
+				count_alleles(&aux, n);
 			}
 
 			if (var_only && aux.n_alleles == 1 && a[0].hash>>63 == 0) continue; // var_only mode, but no ALT allele; skip
@@ -385,7 +387,7 @@ int main(int argc, char *argv[])
 					if (++k != aux.n_alleles) putchar(',');
 				}
 			if (is_vcf && aux.n_alleles == 1 && a[0].hash>>63 == 0) putchar('.'); // print placeholder if there is only the reference allele
-																				  // compute and print qual
+			// compute and print qual
 			for (i = !(a[0].hash>>63), qual = 0; i < aux.n_alleles; ++i)
 				qual = qual > aux.support[i]? qual : aux.support[i];
 			if (is_vcf) printf("\t%d\t.\t.\tGT:%s", qual, show_2strand? "ADF:ADR" : "AD");
@@ -441,5 +443,6 @@ int main(int argc, char *argv[])
 	free(aux.seq); free(aux.depth);
 	free(data); free(reg);
 	if (bed) bed_destroy(bed);
+	fprintf(stderr, "[M::%s] done\n", __func__);
 	return 0;
 }
