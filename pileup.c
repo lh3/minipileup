@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "[E::%s] with option -c, the reference genome must be provided.\n", __func__);
 		return 1;
 	}
-	if (optind == argc) {
+	if (o.ind == argc) {
 		fprintf(stderr, "Usage: minipileup [options] in1.bam [in2.bam [...]]\n");
 		fprintf(stderr, "Options:\n");
 		fprintf(stderr, "  Common:\n");
@@ -255,8 +255,7 @@ int main(int argc, char *argv[])
 	}
 
 	// initialize the auxiliary data structures
-	n = argc - optind; // the number of BAMs on the command line
-	srand48(11);
+	n = argc - o.ind; // the number of BAMs on the command line
 	data = (aux_t**)calloc(n, sizeof(aux_t*)); // data[i] for the i-th input
 	beg = 0; end = 1<<30; tid = -1;  // set the default region
 	if (reg) {
@@ -269,7 +268,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < n; ++i) {
 		bam_hdr_t *htmp;
 		data[i] = (aux_t*)calloc(1, sizeof(aux_t));
-		data[i]->fp = bgzf_open(argv[optind+i], "r"); // open BAM
+		data[i]->fp = bgzf_open(argv[o.ind+i], "r"); // open BAM
 		data[i]->min_mapQ = mapQ;                     // set the mapQ filter
 		data[i]->min_len  = min_len;                  // set the qlen filter
 		data[i]->div_coef = div_coef;
@@ -285,7 +284,7 @@ int main(int argc, char *argv[])
 		if (i) bam_hdr_destroy(htmp); // if not the 1st BAM, trash the header
 		else h = htmp; // keep the header of the 1st BAM
 		if (tid >= 0) { // if a region is specified and parsed successfully
-			hts_idx_t *idx = bam_index_load(argv[optind+i]); // load the index
+			hts_idx_t *idx = bam_index_load(argv[o.ind+i]); // load the index
 			data[i]->itr = bam_itr_queryi(idx, tid, beg, end); // set the iterator
 			hts_idx_destroy(idx); // the index is not needed any more; phase out of the memory
 		}
@@ -315,7 +314,7 @@ int main(int argc, char *argv[])
 			puts("##FORMAT=<ID=ADR,Number=R,Type=Integer,Description=\"Allelic depths on the reverse strand\">");
 		} else puts("##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Allelic depths for the ref and alt alleles in the order listed\">");
 		fputs("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT", stdout);
-		for (i = 0; i < n; ++i) printf("\t%s", argv[optind+i]);
+		for (i = 0; i < n; ++i) printf("\t%s", argv[o.ind+i]);
 		putchar('\n');
 	}
 	while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) { // come to the next covered position
