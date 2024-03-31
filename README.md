@@ -1,3 +1,5 @@
+## Introduction
+
 Minipileup is a simple pileup-based variant caller. It takes a reference FASTA
 and one or multiple alignment BAM as input, and outputs a multi-sample VCF along with
 allele counts:
@@ -17,5 +19,24 @@ but minipileup is faster and more convenient.
 Minipileup is adapted from the [htsbox][htsbox] pileup command which was
 initially implemented in 2012 and has been a tool I frequently use to
 investigate alignment data.
+
+## Methods
+
+Minipileup briefly follows three steps:
+
+1. Read filtering. This step controls reads used for pileup. You can filter
+   reads by mapping quality (`-q`), alignment length (`-l` and `-S`) or by
+   region (`-b`).
+
+2. Allele counting. Initial pileup is generated with the htslib
+   `bam_mplp_auto()` API. At each position, alleles across all input BAMs are
+   grouped and the number of supporting reads for each allele is calculated.
+   Bases of low quality (`-Q`) or close to reads ends (`-T`) may be ignored.
+   Minipileup drops alleles supported by too few reads (`-s` and `-a`).
+
+3. Output. In the variant VCF mode (`-vc` and `-f`), a site is outputted if a
+   non-reference allele remains. The VCF shows the number of supporting reads
+   of each allele in each BAM. Strand information can be optionally obtained
+   (`-C`).
 
 [htsbox]: https://github.com/lh3/htsbox
