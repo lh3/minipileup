@@ -6,7 +6,7 @@ CPPFLAGS=
 INCLUDES=
 OBJS=		razf.o bgzf.o hts.o sam.o faidx.o bedidx.o
 PROG=		minipileup
-LIBS=		-lz -lm
+LIBS=		-lpthread -lz -lm
 
 ifneq ($(asan),)
 	CFLAGS+=-fsanitize=address

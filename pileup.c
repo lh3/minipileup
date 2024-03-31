@@ -285,33 +285,31 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	if (optind == argc) {
-        fprintf(stderr, "\n");
-        fprintf(stderr, "Usage:   pileup [options] in1.bam [in2.bam [...]]\n\n");
-        fprintf(stderr, "Options: -f FILE    reference genome [null]\n");
-		fprintf(stderr, "         -r STR     region [null]\n");
-		fprintf(stderr, "         -b FILE    BED or position list file to include [null]\n");
-		fprintf(stderr, "         -Q INT     minimum base quality [%d]\n", baseQ);
-		fprintf(stderr, "         -q INT     minimum mapping quality [%d]\n", mapQ);
-		fprintf(stderr, "         -l INT     minimum query length [%d]\n", min_len);
-		fprintf(stderr, "         -S INT     minimum supplementary alignment length [0]\n");
-		fprintf(stderr, "         -V FLOAT   ignore queries with per-base divergence >FLOAT [1]\n");
-		fprintf(stderr, "         -T INT     ignore bases within INT-bp from either end of a read [0]\n");
-		fprintf(stderr, "         -d         base quality as depth\n");
-		fprintf(stderr, "         -s INT     drop alleles with depth<INT [%d]\n", min_support);
-		fprintf(stderr, "         -e         use '*' to mark deleted bases\n");
-		fprintf(stderr, "\n");
-		fprintf(stderr, "         -v         show variants only\n");
-		fprintf(stderr, "         -c         output in the VCF format (force -v)\n");
-		fprintf(stderr, "         -C         show count of each allele on both strands\n");
-		fprintf(stderr, "\n");
-		fprintf(stderr, "         -F         output the consensus in FASTA\n");
-		fprintf(stderr, "         -M         majority-allele FASTA (majfa; force -F)\n");
-		fprintf(stderr, "         -R         random-allele FASTA (randfa; force -F)\n");
-		fprintf(stderr, "         -x CHAR    character for bases identical to the reference [ref]\n");
-		fprintf(stderr, "         -D FLOAT   soft mask if sumQ > avgSum+FLOAT*sqrt(avgSum) (force -F) [%.2f]\n", max_dev);
-		fprintf(stderr, "\n");
-		fprintf(stderr, "         -u         unitig calling mode (-d -V.01 -S300 -q20 -Q3 -s5)\n");
-		fprintf(stderr, "\n");
+		fprintf(stderr, "Usage: minipileup [options] in1.bam [in2.bam [...]]\n");
+		fprintf(stderr, "Options:\n");
+		fprintf(stderr, "  Common:\n");
+		fprintf(stderr, "    -f FILE    reference genome [null]\n");
+		fprintf(stderr, "    -v         show variants only\n");
+		fprintf(stderr, "    -c         output in the VCF format (force -v)\n");
+		fprintf(stderr, "    -C         show count of each allele on both strands\n");
+		fprintf(stderr, "  Filtering:\n");
+		fprintf(stderr, "    -r STR     region [null]\n");
+		fprintf(stderr, "    -b FILE    BED or position list file to include [null]\n");
+		fprintf(stderr, "    -Q INT     minimum base quality [%d]\n", baseQ);
+		fprintf(stderr, "    -q INT     minimum mapping quality [%d]\n", mapQ);
+		fprintf(stderr, "    -l INT     minimum query length [%d]\n", min_len);
+		fprintf(stderr, "    -S INT     minimum supplementary alignment length [0]\n");
+		fprintf(stderr, "    -V FLOAT   ignore queries with per-base divergence >FLOAT [1]\n");
+		fprintf(stderr, "    -T INT     ignore bases within INT-bp from either end of a read [0]\n");
+		fprintf(stderr, "    -d         base quality as depth\n");
+		fprintf(stderr, "    -s INT     drop alleles with depth<INT [%d]\n", min_support);
+		fprintf(stderr, "    -e         use '*' to mark deleted bases\n");
+		fprintf(stderr, "    -F         output the consensus in FASTA\n");
+		fprintf(stderr, "    -M         majority-allele FASTA (majfa; force -F)\n");
+		fprintf(stderr, "    -R         random-allele FASTA (randfa; force -F)\n");
+		fprintf(stderr, "    -x CHAR    character for bases identical to the reference [ref]\n");
+		fprintf(stderr, "    -D FLOAT   soft mask if sumQ > avgSum+FLOAT*sqrt(avgSum) (force -F) [%.2f]\n", max_dev);
+		fprintf(stderr, "    -u         unitig calling mode (-d -V.01 -S300 -q20 -Q3 -s5)\n");
 		return 1;
 	}
 
