@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 	ketopt_t o = KETOPT_INIT;
 
 	// parse the command line
-	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:vcCS:s:b:T:ea:y", 0)) >= 0) {
+	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:vcCS:s:b:T:ea:yV", 0)) >= 0) {
 		if (n == 'f') { fname = o.arg; fai = fai_load(fname); }
 		else if (n == 'b') bed = bed_read(o.arg);
 		else if (n == 'l') min_len = atoi(o.arg); // minimum query length
@@ -199,6 +199,10 @@ int main(int argc, char *argv[])
 		else if (n == 'T') trim_len = atoi(o.arg);
 		else if (n == 'e') del_as_allele = 1;
 		else if (n == 'y') mapQ = 30, baseQ = 20, min_support = 5, min_support_strand = 2, is_vcf = var_only = show_2strand = 1;
+		else if (n == 'V') {
+			puts(VERSION);
+			return 0;
+		}
 	}
 	if (min_support < 1) min_support = 1;
 	if (is_vcf && fai == 0) {
@@ -214,18 +218,18 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "    -c           output in the VCF format (force -v)\n");
 		fprintf(stderr, "    -C           show count of each allele on both strands\n");
 		fprintf(stderr, "    -e           use '*' to mark deleted bases\n");
+		fprintf(stderr, "    -y           variant calling mode (-vcC -a2 -s5 -q30 -Q20)\n");
+		fprintf(stderr, "    -V           print version number\n");
 		fprintf(stderr, "  Filtering:\n");
 		fprintf(stderr, "    -r STR       region in format of 'ctg:start-end' [null]\n");
 		fprintf(stderr, "    -b FILE      BED or position list file to include [null]\n");
 		fprintf(stderr, "    -q INT       minimum mapping quality [%d]\n", mapQ);
 		fprintf(stderr, "    -Q INT       minimum base quality [%d]\n", baseQ);
-		fprintf(stderr, "    -l INT       minimum query length [%d]\n", min_len);
+		fprintf(stderr, "    -l INT       minimum alignment length [%d]\n", min_len);
 		fprintf(stderr, "    -S INT       minimum supplementary alignment length [0]\n");
-		fprintf(stderr, "    -V FLOAT     skip alignment with per-base divergence >FLOAT [1]\n");
 		fprintf(stderr, "    -T INT       skip bases within INT-bp from either end of a read [0]\n");
 		fprintf(stderr, "    -s INT       drop alleles with depth<INT [%d]\n", min_support);
 		fprintf(stderr, "    -a INT       drop alleles with depth<INT on either strand [%d]\n", min_support_strand);
-		fprintf(stderr, "    -y           variant calling mode (-vcC -a2 -s5 -q30 -Q20)\n");
 		return 1;
 	}
 
@@ -415,6 +419,11 @@ int main(int argc, char *argv[])
 	free(aux.seq); free(aux.depth);
 	free(data); free(reg);
 	if (bed) bed_destroy(bed);
-	fprintf(stderr, "[M::%s] done\n", __func__);
+
+	fprintf(stderr, "[M::%s] Version: %s\n", __func__, VERSION);
+	fprintf(stderr, "[M::%s] CMD:", __func__);
+	for (i = 0; i < argc; ++i)
+		fprintf(stderr, " %s", argv[i]);
+	fprintf(stderr, "\n");
 	return 0;
 }
