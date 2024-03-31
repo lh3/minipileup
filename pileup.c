@@ -24,7 +24,6 @@ typedef struct {     // auxiliary data structure
 	const bam_hdr_t *h;
 	int min_mapQ, min_len; // mapQ filter; length filter
 	int min_supp_len;
-	double div_coef;
 	void *bed;       // bedidx if not NULL
 } aux_t;
 
@@ -54,32 +53,6 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 			if (qlen < aux->min_supp_len && (b->core.flag&BAM_FSUPP)) b->core.flag |= BAM_FUNMAP;
 			if (aux->bed && !(b->core.flag&BAM_FUNMAP) && !bed_overlap(aux->bed, chr, b->core.pos, b->core.pos + tlen))
 				b->core.flag |= BAM_FUNMAP;
-		}
-		if (!(b->core.flag&BAM_FUNMAP) && aux->div_coef < 1.) {
-			uint8_t *NM;
-			int nm, k, n_gaps = 0, n_opens = 0, n_matches = 0;
-			const uint32_t *cigar = bam_get_cigar(b);
-			if ((NM = bam_aux_get(b, "NM")) == 0) return ret;
-			if ((nm = bam_aux2i(NM)) == 0) return ret;
-			for (k = 0; k < b->core.n_cigar; ++k) {
-				int op = bam_cigar_op(cigar[k]);
-				int l = bam_cigar_oplen(cigar[k]);
-				if (op == BAM_CMATCH) n_matches += l;
-				else if (op == BAM_CINS || op == BAM_CDEL) ++n_opens, n_gaps += l;
-			}
-			if (n_gaps <= nm) {
-				int x = (nm - n_gaps) + n_opens, q;
-				double expected = (n_matches + n_gaps) * aux->div_coef;
-				double y = 1., p = 1.;
-				if (x < expected) return ret;
-				for (k = 1; k < x; ++k)
-					y *= expected / k, p += y;
-				p = 1. - p * exp(-expected);
-				p = p > 1e-6? -4.343 * log(p) : 60.;
-				q = (int)(p + .499);
-				b->core.qual = b->core.qual > q? b->core.qual - q : 0;
-				if ((int)b->core.qual < aux->min_mapQ) b->core.flag |= BAM_FUNMAP;
-			}
 		}
 	}
 	return ret;
@@ -198,7 +171,6 @@ int main(int argc, char *argv[])
 	int i, j, n, tid, beg, end, pos, *n_plp, baseQ = 0, mapQ = 0, min_len = 0, l_ref = 0, min_support = 1, min_support_strand = 0, min_supp_len = 0;
 	int is_vcf = 0, var_only = 0, show_2strand = 0, trim_len = 0, del_as_allele = 0;
 	int last_tid;
-	double div_coef = 1.;
 	const bam_pileup1_t **plp;
 	char *ref = 0, *reg = 0, *chr_end; // specified region
 	char *fname = 0; // reference fasta
@@ -211,7 +183,7 @@ int main(int argc, char *argv[])
 	ketopt_t o = KETOPT_INIT;
 
 	// parse the command line
-	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:vcCS:s:V:b:T:ea:", 0)) >= 0) {
+	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:vcCS:s:b:T:ea:y", 0)) >= 0) {
 		if (n == 'f') { fname = o.arg; fai = fai_load(fname); }
 		else if (n == 'b') bed = bed_read(o.arg);
 		else if (n == 'l') min_len = atoi(o.arg); // minimum query length
@@ -222,11 +194,11 @@ int main(int argc, char *argv[])
 		else if (n == 'a') min_support_strand = atoi(o.arg);
 		else if (n == 'S') min_supp_len = atoi(o.arg);
 		else if (n == 'v') var_only = 1;
-		else if (n == 'V') div_coef = atof(o.arg);
 		else if (n == 'c') is_vcf = var_only = 1;
 		else if (n == 'C') show_2strand = 1;
 		else if (n == 'T') trim_len = atoi(o.arg);
 		else if (n == 'e') del_as_allele = 1;
+		else if (n == 'y') mapQ = 30, baseQ = 20, min_support = 5, min_support_strand = 2, is_vcf = var_only = show_2strand = 1;
 	}
 	if (min_support < 1) min_support = 1;
 	if (is_vcf && fai == 0) {
@@ -236,7 +208,7 @@ int main(int argc, char *argv[])
 	if (o.ind == argc) {
 		fprintf(stderr, "Usage: minipileup [options] in1.bam [in2.bam [...]]\n");
 		fprintf(stderr, "Options:\n");
-		fprintf(stderr, "  Common:\n");
+		fprintf(stderr, "  General:\n");
 		fprintf(stderr, "    -f FILE      reference genome [null]\n");
 		fprintf(stderr, "    -v           show variants only\n");
 		fprintf(stderr, "    -c           output in the VCF format (force -v)\n");
@@ -253,6 +225,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "    -T INT       skip bases within INT-bp from either end of a read [0]\n");
 		fprintf(stderr, "    -s INT       drop alleles with depth<INT [%d]\n", min_support);
 		fprintf(stderr, "    -a INT       drop alleles with depth<INT on either strand [%d]\n", min_support_strand);
+		fprintf(stderr, "    -y           variant calling mode (-vcC -a2 -s5 -q30 -Q20)\n");
 		return 1;
 	}
 
@@ -273,7 +246,6 @@ int main(int argc, char *argv[])
 		data[i]->fp = bgzf_open(argv[o.ind+i], "r"); // open BAM
 		data[i]->min_mapQ = mapQ;                     // set the mapQ filter
 		data[i]->min_len  = min_len;                  // set the qlen filter
-		data[i]->div_coef = div_coef;
 		data[i]->min_supp_len = min_supp_len;
 		data[i]->bed = bed;
 		htmp = bam_hdr_read(data[i]->fp);             // read the BAM header
