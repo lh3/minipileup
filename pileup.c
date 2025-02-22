@@ -130,7 +130,6 @@ typedef struct {
 	int *support, *support_strand; // support across entire $a. It points to the last "row" of cnt_supp/cnt_strand
 	int len, max_len;
 	char *seq;
-	int *depth;
 } paux_t;
 
 static void count_alleles(paux_t *pa, int n)
@@ -171,6 +170,7 @@ int main(int argc, char *argv[])
 	int i, j, n, tid, beg, end, pos, *n_plp, baseQ = 0, mapQ = 0, min_len = 0, l_ref = 0, min_support = 1, min_support_strand = 0, min_supp_len = 0;
 	int is_vcf = 0, var_only = 0, show_2strand = 0, trim_len = 0, del_as_allele = 0;
 	int last_tid;
+	double min_vaf = 0.0;
 	const bam_pileup1_t **plp;
 	char *ref = 0, *reg = 0, *chr_end; // specified region
 	char *fname = 0; // reference fasta
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 	ketopt_t o = KETOPT_INIT;
 
 	// parse the command line
-	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:vcCS:s:b:T:ea:yV", 0)) >= 0) {
+	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:F:vcCS:s:b:T:ea:yV", 0)) >= 0) {
 		if (n == 'f') { fname = o.arg; fai = fai_load(fname); }
 		else if (n == 'b') bed = bed_read(o.arg);
 		else if (n == 'l') min_len = atoi(o.arg); // minimum query length
@@ -198,7 +198,8 @@ int main(int argc, char *argv[])
 		else if (n == 'C') show_2strand = 1;
 		else if (n == 'T') trim_len = atoi(o.arg);
 		else if (n == 'e') del_as_allele = 1;
-		else if (n == 'y') mapQ = 30, baseQ = 20, min_support = 5, min_support_strand = 2, is_vcf = var_only = show_2strand = 1;
+		else if (n == 'F') min_vaf = atof(o.arg);
+		else if (n == 'y') mapQ = 30, baseQ = 20, min_support = 5, min_support_strand = 2, is_vcf = var_only = show_2strand = 1, min_vaf = 0.2;
 		else if (n == 'V') {
 			puts(VERSION);
 			return 0;
@@ -230,6 +231,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "    -T INT       skip bases within INT-bp from either end of a read [0]\n");
 		fprintf(stderr, "    -s INT       drop alleles with depth<INT [%d]\n", min_support);
 		fprintf(stderr, "    -a INT       drop alleles with depth<INT on either strand [%d]\n", min_support_strand);
+		fprintf(stderr, "    -F FLOAT     drop an allele if the VAF is below [%g]\n", min_vaf);
 		return 1;
 	}
 
@@ -416,7 +418,7 @@ int main(int argc, char *argv[])
 	if (ref) free(ref);
 	if (fai) fai_destroy(fai);
 	free(aux.cnt_strand); free(aux.cnt_supp); free(aux.a);
-	free(aux.seq); free(aux.depth);
+	free(aux.seq);
 	free(data); free(reg);
 	if (bed) bed_destroy(bed);
 
