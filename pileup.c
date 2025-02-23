@@ -11,7 +11,7 @@
 #include "ksort.h"
 #include "ketopt.h"
 
-#define VERSION "1.0-r11"
+#define VERSION "1.1-r16"
 
 const char *hts_parse_reg(const char *s, int *beg, int *end);
 void *bed_read(const char *fn);
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 	int i, j, n, tid, beg, end, pos, *n_plp, baseQ = 0, mapQ = 0, min_len = 0, l_ref = 0, min_support = 1, min_support_strand = 0, min_supp_len = 0;
 	int is_vcf = 0, var_only = 0, show_2strand = 0, trim_len = 0, del_as_allele = 0;
 	int last_tid;
-	double min_vaf = 0.0;
+	double min_af = 0.0;
 	const bam_pileup1_t **plp;
 	char *ref = 0, *reg = 0, *chr_end; // specified region
 	char *fname = 0; // reference fasta
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 	ketopt_t o = KETOPT_INIT;
 
 	// parse the command line
-	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:F:vcCS:s:b:T:ea:yV", 0)) >= 0) {
+	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:p:vcCS:s:b:T:ea:yV", 0)) >= 0) {
 		if (n == 'f') { fname = o.arg; fai = fai_load(fname); }
 		else if (n == 'b') bed = bed_read(o.arg);
 		else if (n == 'l') min_len = atoi(o.arg); // minimum query length
@@ -198,8 +198,8 @@ int main(int argc, char *argv[])
 		else if (n == 'C') show_2strand = 1;
 		else if (n == 'T') trim_len = atoi(o.arg);
 		else if (n == 'e') del_as_allele = 1;
-		else if (n == 'F') min_vaf = atof(o.arg);
-		else if (n == 'y') mapQ = 30, baseQ = 20, min_support = 5, min_support_strand = 2, is_vcf = var_only = show_2strand = 1, min_vaf = 0.2;
+		else if (n == 'p') min_af = atof(o.arg);
+		else if (n == 'y') mapQ = 30, baseQ = 20, min_support = 5, min_support_strand = 2, is_vcf = var_only = show_2strand = 1;
 		else if (n == 'V') {
 			puts(VERSION);
 			return 0;
@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "    -T INT       skip bases within INT-bp from either end of a read [0]\n");
 		fprintf(stderr, "    -s INT       drop alleles with depth<INT [%d]\n", min_support);
 		fprintf(stderr, "    -a INT       drop alleles with depth<INT on either strand [%d]\n", min_support_strand);
-		fprintf(stderr, "    -F FLOAT     drop an allele if the VAF is below [%g]\n", min_vaf);
+		fprintf(stderr, "    -p FLOAT     drop an allele if the allele fraction is below FLOAT [%g]\n", min_af);
 		return 1;
 	}
 
@@ -330,8 +330,11 @@ int main(int argc, char *argv[])
 			count_alleles(&aux, n);
 			// squeeze out weak alleles
 			for (i = k = 0; i < aux.n_a; ++i)
-				if (aux.support[a[i].k] >= min_support && aux.support_strand[a[i].k<<1] >= min_support_strand && aux.support_strand[a[i].k<<1|1] >= min_support_strand)
+				if (aux.support[a[i].k] >= min_support && aux.support[a[i].k] >= aux.n_a * min_af
+					&& aux.support_strand[a[i].k<<1] >= min_support_strand && aux.support_strand[a[i].k<<1|1] >= min_support_strand)
+				{
 					a[k++] = a[i];
+				}
 			if (k < aux.n_a) {
 				if (k == 0) continue; // no alleles are good enough
 				aux.n_a = k;
@@ -379,6 +382,9 @@ int main(int argc, char *argv[])
 					else if (sum_q[j] > max2) max2 = sum_q[j], a2 = j;
 				if (max1 == 0 || (min_support > 0 && max1 < min_support)) a1 = a2 = -1;
 				else if (max2 == 0 || (min_support > 0 && max2 < min_support)) a2 = a1;
+				// turn the genotype to homozygous if min_af is set and the minor allele does not high enough frequency
+				if (min_af > 0.0 && min_af < 0.5 && a1 >= 0 && a2 >= 0 && a1 != a2 && max2 < (max1 + max2) * min_af)
+					a1 = a2;
 				// print genotypes
 				if (a1 < 0) printf("\t./.:");
 				else printf("\t%d/%d:", a1 + shift, a2 + shift);

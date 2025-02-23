@@ -5,7 +5,7 @@ and one or multiple alignment BAM as input, and outputs a multi-sample VCF along
 allele counts:
 ```sh
 samtools faidx ref.fa       # index FASTA; bgzip'd FASTA is not supported
-minipileup -yf ref.fa aln1.bam aln2.bam > var.vcf
+minipileup -yf ref.fa -p.2 aln1.bam aln2.bam > var.vcf
 ```
 You can adjust mapping quality, base quality, alignment length and allele count
 thresholds, or specify regions on the command line.
@@ -32,11 +32,12 @@ Minipileup briefly follows three steps:
    `bam_mplp_auto()` API. At each position, alleles across all input BAMs are
    grouped and the number of supporting reads for each allele is calculated.
    Bases of low quality (`-Q`) or close to reads ends (`-T`) may be ignored.
-   Minipileup drops alleles supported by too few reads (`-s` and `-a`).
+   Minipileup drops alleles supported by too few reads (`-s`, `-a` and `-p`).
 
 3. Output. In the variant VCF mode (`-vc` and `-f`), a site is outputted if a
    non-reference allele remains. The VCF shows the number of supporting reads
    of each allele in each BAM. Strand information can be optionally obtained
-   (`-C`).
+   (`-C`). If the minimum allele fraction (`-p`) is specified, the minor allele
+   fraction in a heterozygous genotype must be above the threshold.
 
 [htsbox]: https://github.com/lh3/htsbox
