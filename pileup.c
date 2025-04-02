@@ -11,7 +11,7 @@
 #include "ksort.h"
 #include "ketopt.h"
 
-#define VERSION "1.1-r16"
+#define VERSION "1.2-r17"
 
 const char *hts_parse_reg(const char *s, int *beg, int *end);
 void *bed_read(const char *fn);
@@ -24,6 +24,7 @@ typedef struct {     // auxiliary data structure
 	const bam_hdr_t *h;
 	int min_mapQ, min_len; // mapQ filter; length filter
 	int min_supp_len;
+	int proper_only;
 	void *bed;       // bedidx if not NULL
 } aux_t;
 
@@ -34,6 +35,8 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 	int ret = aux->itr? bam_itr_next(aux->fp, aux->itr, b) : bam_read1(aux->fp, b);
 	if (ret < 0) return ret;
 	if (b->core.tid < 0) b->core.flag |= BAM_FUNMAP;
+	if (aux->proper_only && (b->core.flag&BAM_FPAIRED) && !(b->core.flag&BAM_FPROPER_PAIR))
+		b->core.flag |= BAM_FUNMAP;
 	if (!(b->core.flag&BAM_FUNMAP)) {
 		if ((int)b->core.qual < aux->min_mapQ) {
 			b->core.flag |= BAM_FUNMAP;
@@ -168,7 +171,7 @@ static void count_alleles(paux_t *pa, int n)
 int main(int argc, char *argv[])
 {
 	int i, j, n, tid, beg, end, pos, *n_plp, baseQ = 0, mapQ = 0, min_len = 0, l_ref = 0, min_support = 1, min_support_strand = 0, min_supp_len = 0;
-	int is_vcf = 0, var_only = 0, show_2strand = 0, trim_len = 0, del_as_allele = 0;
+	int is_vcf = 0, var_only = 0, show_2strand = 0, trim_len = 0, del_as_allele = 0, proper_only = 0;
 	int last_tid;
 	double min_af = 0.0;
 	const bam_pileup1_t **plp;
@@ -183,7 +186,7 @@ int main(int argc, char *argv[])
 	ketopt_t o = KETOPT_INIT;
 
 	// parse the command line
-	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:p:vcCS:s:b:T:ea:yV", 0)) >= 0) {
+	while ((n = ketopt(&o, argc, argv, 1, "r:q:Q:l:f:p:vcCS:s:b:T:ea:yVP", 0)) >= 0) {
 		if (n == 'f') { fname = o.arg; fai = fai_load(fname); }
 		else if (n == 'b') bed = bed_read(o.arg);
 		else if (n == 'l') min_len = atoi(o.arg); // minimum query length
@@ -199,6 +202,7 @@ int main(int argc, char *argv[])
 		else if (n == 'T') trim_len = atoi(o.arg);
 		else if (n == 'e') del_as_allele = 1;
 		else if (n == 'p') min_af = atof(o.arg);
+		else if (n == 'P') proper_only = 1;
 		else if (n == 'y') mapQ = 30, baseQ = 20, min_support = 5, min_support_strand = 2, is_vcf = var_only = show_2strand = 1;
 		else if (n == 'V') {
 			puts(VERSION);
@@ -221,13 +225,15 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "    -e           use '*' to mark deleted bases\n");
 		fprintf(stderr, "    -y           variant calling mode (-vcC -a2 -s5 -q30 -Q20)\n");
 		fprintf(stderr, "    -V           print version number\n");
-		fprintf(stderr, "  Filtering:\n");
+		fprintf(stderr, "  Alignment filter:\n");
 		fprintf(stderr, "    -r STR       region in format of 'ctg:start-end' [null]\n");
 		fprintf(stderr, "    -b FILE      BED or position list file to include [null]\n");
+		fprintf(stderr, "    -P           only consider properly paired reads for paired-end reads\n");
 		fprintf(stderr, "    -q INT       minimum mapping quality [%d]\n", mapQ);
-		fprintf(stderr, "    -Q INT       minimum base quality [%d]\n", baseQ);
 		fprintf(stderr, "    -l INT       minimum alignment length [%d]\n", min_len);
 		fprintf(stderr, "    -S INT       minimum supplementary alignment length [0]\n");
+		fprintf(stderr, "  Site filter:\n");
+		fprintf(stderr, "    -Q INT       minimum base quality [%d]\n", baseQ);
 		fprintf(stderr, "    -T INT       skip bases within INT-bp from either end of a read [0]\n");
 		fprintf(stderr, "    -s INT       drop alleles with depth<INT [%d]\n", min_support);
 		fprintf(stderr, "    -a INT       drop alleles with depth<INT on either strand [%d]\n", min_support_strand);
@@ -253,6 +259,7 @@ int main(int argc, char *argv[])
 		data[i]->min_mapQ = mapQ;                     // set the mapQ filter
 		data[i]->min_len  = min_len;                  // set the qlen filter
 		data[i]->min_supp_len = min_supp_len;
+		data[i]->proper_only = proper_only;
 		data[i]->bed = bed;
 		htmp = bam_hdr_read(data[i]->fp);             // read the BAM header
 		if (i == 0 && chr_end) {
