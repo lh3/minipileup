@@ -11,7 +11,7 @@
 #include "ksort.h"
 #include "ketopt.h"
 
-#define VERSION "1.2-r17"
+#define VERSION "1.3-r18"
 
 const char *hts_parse_reg(const char *s, int *beg, int *end);
 void *bed_read(const char *fn);
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 		else if (n == 'e') del_as_allele = 1;
 		else if (n == 'p') min_af = atof(o.arg);
 		else if (n == 'P') proper_only = 1;
-		else if (n == 'y') mapQ = 30, baseQ = 20, min_support = 5, min_support_strand = 2, is_vcf = var_only = show_2strand = 1;
+		else if (n == 'y') mapQ = q0, baseQ = 20, min_support = 5, min_support_strand = 2, is_vcf = var_only = show_2strand = 1;
 		else if (n == 'V') {
 			puts(VERSION);
 			return 0;
