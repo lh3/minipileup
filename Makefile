@@ -1,12 +1,12 @@
-CC=			gcc
-CXX=		g++
-CFLAGS=		-g -Wall -O3
-CXXFLAGS=	$(CFLAGS)
+CC ?=			gcc
+CXX ?=		g++
+CFLAGS ?=		-g -Wall -O3
+CXXFLAGS ?=	$(CFLAGS)
 CPPFLAGS=
 INCLUDES=
-OBJS=		razf.o bgzf.o hts.o sam.o faidx.o bedidx.o
-PROG=		minipileup
-LIBS=		-lpthread -lz -lm
+OBJS ?=		razf.o bgzf.o hts.o sam.o faidx.o bedidx.o
+PROG ?=		minipileup
+LIBS ?=		-lpthread -lz -lm
 
 ifneq ($(asan),)
 	CFLAGS+=-fsanitize=address
